@@ -1,0 +1,42 @@
+[build-system]
+requires = ["scikit-build-core>=0.10,<2", "pybind11>=2.13,<4"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "majiqwalk"
+version = "0.1.0.dev3"
+description = "Modular discrete-time quantum walks: C++ engine, Python interface"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {file = "LICENSE"}
+authors = [{name = "Majid Moradi Kelardeh", email = "majidofficial@gmail.com"}]
+dependencies = ["numpy>=1.24", "pydantic>=2.7,<3", "PyYAML>=6", "h5py>=3.10"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Programming Language :: C++",
+  "Programming Language :: Python :: 3",
+  "Topic :: Scientific/Engineering :: Physics",
+]
+
+[project.optional-dependencies]
+plot = ["matplotlib>=3.7"]
+test = ["pytest>=8", "matplotlib>=3.7", "jsonschema>=4"]
+dev = ["pytest>=8", "matplotlib>=3.7", "jsonschema>=4", "build>=1.2"]
+portable = ["pyinstaller>=6"]
+
+[project.scripts]
+majiqwalk = "majiqwalk.cli:main"
+
+[project.urls]
+Homepage = "https://mkmajiid.github.io"
+Repository = "https://github.com/MKMajiid/MajiQwalK"
+Documentation = "https://github.com/MKMajiid/MajiQwalK/tree/main/docs"
+Issues = "https://github.com/MKMajiid/MajiQwalK/issues"
+
+[tool.scikit-build]
+cmake.version = ">=3.20"
+wheel.packages = ["python/majiqwalk"]
+sdist.include = ["include/**", "src/**", "tests/**", "examples/**", "docs/**", "schemas/**", "scripts/**", "CMakeLists.txt", "CITATION.cff", "NOTICE", "CHANGELOG.md", ".github/**"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/python"]

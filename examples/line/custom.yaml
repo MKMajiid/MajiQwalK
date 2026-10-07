@@ -1,0 +1,21 @@
+schema_version: 1
+simulation:
+  steps: 20
+geometry:
+  type: line
+  sites: 41
+  boundary: periodic
+coin:
+  type: custom
+  dimension: 2
+  matrix:
+    - [[0.7071067811865476, 0.0], [0.7071067811865476, 0.0]]
+    - [[0.7071067811865476, 0.0], [-0.7071067811865476, 0.0]]
+initial_state:
+  coin:
+    basis: 0
+observables:
+  - type: probability
+  - type: time_average_probability
+output:
+  file: line_custom.h5

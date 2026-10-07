@@ -1,0 +1,30 @@
+schema_version: 1
+simulation:
+  steps: 200
+  save_every: 1
+  representation: state_vector
+geometry:
+  type: line
+  shape: [401]
+  boundary: open
+coin:
+  type: hadamard
+initial_state:
+  position:
+    site: 200
+  coin:
+    amplitudes: [[0.7071067811865476, 0.0], [0.0, 0.7071067811865476]]
+backend:
+  type: cpu
+  threads: auto
+observables:
+  - type: probability
+  - type: moments
+    orders: [1, 2, 3, 4]
+  - type: coin_position_entanglement
+output:
+  file: line_hadamard.h5
+  save_state: false
+plot:
+  preset: aps_pr
+  formats: [pdf, png]

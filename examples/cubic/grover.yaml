@@ -1,0 +1,12 @@
+schema_version: 1
+simulation:
+  steps: 6
+  save_every: 2
+geometry:
+  type: cubic
+  shape: [13, 13, 13]
+  boundary: open
+coin:
+  type: grover
+output:
+  file: cubic_grover.h5

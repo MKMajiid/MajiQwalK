@@ -1,0 +1,14 @@
+schema_version: 1
+simulation:
+  steps: 20
+geometry:
+  type: square
+  shape: [41, 41]
+  boundary: open
+coin:
+  type: grover
+initial_state:
+  coin:
+    amplitudes: [[0.5, 0.0], [-0.5, 0.0], [-0.5, 0.0], [0.5, 0.0]]
+output:
+  file: square_grover.h5

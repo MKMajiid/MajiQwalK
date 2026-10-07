@@ -1,0 +1,30 @@
+name: Build and scientific tests
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  test:
+    env:
+      SOURCE_DATE_EPOCH: '946684800'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ['3.10', '3.12']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install ".[dev]" cmake ninja
+      - run: python -m pytest -q
+      - run: cmake -S . -B build/cpp -DMAJIQWALK_BUILD_PYTHON=OFF -DMAJIQWALK_BUILD_TESTS=ON
+      - run: cmake --build build/cpp --config Release
+      - run: ctest --test-dir build/cpp -C Release --output-on-failure
+      - run: python -m build
+      - run: python scripts/build_source.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages-${{ matrix.os }}-${{ matrix.python }}
+          path: dist/*
