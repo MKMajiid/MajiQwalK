@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1916 821" role="img" aria-labelledby="title desc">
+  <title id="title">MajiQwalK</title>
+  <desc id="desc">MajiQwalK — A Python/C++ package for Quantum Walk</desc>
+  <defs>
+    <linearGradient id="brand" x1="0%" y1="40%" x2="100%" y2="60%">
+      <stop offset="0%" stop-color="#8d13f3"/>
+      <stop offset="42%" stop-color="#4b39e8"/>
+      <stop offset="100%" stop-color="#0879ff"/>
+    </linearGradient>
+    <linearGradient id="dark" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#101c29"/>
+      <stop offset="100%" stop-color="#07131e"/>
+    </linearGradient>
+    <linearGradient id="subtitle" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#274d80"/>
+      <stop offset="100%" stop-color="#365a8d"/>
+    </linearGradient>
+  </defs>
+  <rect width="1916" height="821" fill="#ffffff"/>
+  <text x="48" y="456"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="352"
+        font-weight="800"
+        letter-spacing="-18"
+        fill="url(#brand)">MajiQ</text>
+  <text x="939" y="456"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="352"
+        font-weight="800"
+        letter-spacing="-18"
+        fill="url(#dark)">walK</text>
+  <text x="60" y="646"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="94"
+        font-weight="700"
+        letter-spacing="-2"
+        fill="url(#subtitle)">A Python/C++ package for Quantum Walk</text>
+</svg>
