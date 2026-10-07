@@ -74,3 +74,15 @@ def test_openmp_matches_serial():
     parallel=_core.Engine([4096],"periodic",coin,state,2)
     serial.advance(12); parallel.advance(12)
     np.testing.assert_array_equal(serial.state(),parallel.state())
+
+
+@pytest.mark.parametrize("dimension", [2, 4, 6])
+def test_identity_coin_is_dimension_independent(dimension):
+    from majiqwalk.config import CoinSpec
+    np.testing.assert_array_equal(CoinSpec(type="identity").array(dimension), np.eye(dimension))
+
+@pytest.mark.parametrize("dimension", [4, 6])
+def test_dft_coin_is_unitary_for_square_and_cubic_port_counts(dimension):
+    from majiqwalk.config import CoinSpec
+    coin = CoinSpec(type="dft").array(dimension)
+    np.testing.assert_allclose(coin.conj().T @ coin, np.eye(dimension), atol=1e-12, rtol=0)

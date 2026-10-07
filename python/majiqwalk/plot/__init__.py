@@ -31,7 +31,33 @@ def plot_results(path, directory="figures", formats=None):
             raise ValueError("Plot formats must be pdf, svg, or png")
         shape = file["geometry/shape"][()].tolist()
         origin = file["geometry/origin"][()]
-        steps = file["steps"][()]
+        steps = np.asarray(file["steps"][()], dtype=np.int64)
+
+        if steps.ndim != 1 or steps.size == 0:
+            raise ValueError("Invalid HDF5 result: steps must be a nonempty 1D dataset")
+        if steps[0] != 0 or np.any(np.diff(steps) <= 0):
+            raise ValueError("Invalid HDF5 result: steps must start at 0 and be strictly increasing")
+        configured_steps = int(config["simulation"]["steps"])
+        if int(steps[-1]) != configured_steps:
+            raise ValueError(
+                f"Inconsistent HDF5 result: configuration requests {configured_steps} steps "
+                f"but stored samples end at {int(steps[-1])}. Rerun the simulation after "
+                "changing YAML (use --overwrite or a new output filename)."
+            )
+        for dataset_name in (
+            "observables/probability",
+            "observables/variance",
+            "observables/entanglement/coin_position_entropy",
+        ):
+            if dataset_name in file and file[dataset_name].shape[0] != steps.size:
+                raise ValueError(
+                    f"Inconsistent HDF5 result: {dataset_name} has "
+                    f"{file[dataset_name].shape[0]} samples but steps has {steps.size}"
+                )
+
+        def set_time_axis(ax):
+            if steps[-1] > steps[0]:
+                ax.set_xlim(float(steps[0]), float(steps[-1]))
 
         def save(fig, name):
             fig.tight_layout(pad=0.4)
@@ -64,6 +90,7 @@ def plot_results(path, directory="figures", formats=None):
             for axis, style in enumerate(["-", "--", ":"][:len(shape)]):
                 ax.plot(steps, values[:,axis], style, color="black", label=f"${'xyz'[axis]}$")
             ax.set(xlabel="Step $t$", ylabel="Position variance")
+            set_time_axis(ax)
             if len(shape)>1:
                 ax.legend(frameon=False)
             save(fig, "variance")
@@ -71,5 +98,6 @@ def plot_results(path, directory="figures", formats=None):
             fig, ax = plt.subplots()
             ax.plot(steps, file["observables/entanglement/coin_position_entropy"][()], color="black")
             ax.set(xlabel="Step $t$", ylabel="$S_c$ (bits)")
+            set_time_axis(ax)
             save(fig, "coin_position_entropy")
     return paths

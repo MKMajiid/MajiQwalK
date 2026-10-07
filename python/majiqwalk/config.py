@@ -60,7 +60,7 @@ class ModelSpec(Spec):
 
 
 class CoinSpec(Spec):
-    type: Literal["hadamard", "custom", "u2", "grover", "dft"] = "hadamard"
+    type: Literal["hadamard", "custom", "u2", "grover", "dft", "identity"] = "hadamard"
     dimension: int | None = Field(default=None, ge=1)
     matrix: list[list[Pair]] | None = None
     theta: float = 0.0
@@ -83,7 +83,7 @@ class CoinSpec(Spec):
             c = complex_values(self.matrix, "coin.matrix")
         elif self.type == "hadamard":
             if dimension != 2:
-                raise ValueError("Hadamard coin has 2 ports; use grover, dft, or custom in 2D/3D")
+                raise ValueError("Hadamard coin has 2 ports; use grover, dft, identity, or custom in 2D/3D")
             c = np.array([[1, 1], [1, -1]], dtype=complex) / math.sqrt(2)
         elif self.type == "u2":
             if dimension != 2:
@@ -93,9 +93,13 @@ class CoinSpec(Spec):
                           [np.exp(1j*self.phi)*b, np.exp(1j*(self.phi+self.lam))*a]])
         elif self.type == "grover":
             c = 2 * np.ones((dimension, dimension)) / dimension - np.eye(dimension)
-        else:
+        elif self.type == "dft":
             k = np.arange(dimension)
             c = np.exp(2j*np.pi*np.outer(k, k)/dimension)/math.sqrt(dimension)
+        elif self.type == "identity":
+            c = np.eye(dimension, dtype=complex)
+        else:
+            raise ValueError(f"Unsupported coin type: {self.type}")
         c = np.asarray(c, dtype=np.complex128) * np.exp(1j*self.global_phase)
         if c.shape != (dimension, dimension):
             raise ValueError(f"coin.matrix expected {dimension} x {dimension}; received {c.shape}")

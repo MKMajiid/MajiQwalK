@@ -10,7 +10,7 @@ Version **0.1.0.dev3** prepares the first executable milestone for publication, 
 ## Implemented
 
 - Ordinary coined evolution, **coin then shift**, on line, square and simple-cubic lattices.
-- General custom unitary coins; Hadamard, Grover, DFT and parameterized U(2) coins.
+- General custom unitary coins; Hadamard and parameterized U(2) for two-port walks, plus Grover, DFT/Fourier and identity coins for arbitrary port dimension.
 - Localized, distributed product and arbitrary full pure initial states.
 - Explicit open-window, periodic and reflecting boundaries.
 - Complex double precision; CPU propagation and optional OpenMP coin processing.
@@ -48,8 +48,7 @@ majiqwalk export examples/line/line_hadamard.h5 --output probability.csv
 
 `majiqwalk examples/line/hadamard.yaml` is also accepted. `python -m majiqwalk` provides the same commands. CLI output paths from YAML are relative to the configuration file; `--output` is relative to the current working directory. Existing HDF5 results are preserved unless `--overwrite` or `output.overwrite: true` is set.
 
-Every shipped example uses `<geometry>_<coin>.h5`: `line_hadamard.h5`,
-`line_custom.h5`, `square_grover.h5`, and `cubic_grover.h5`. These names are
+Shipped examples include line Hadamard/custom walks and Grover, DFT/Fourier and identity coins for both square and cubic walks. Output files use `<geometry>_<coin>.h5` (for example `square_dft.h5` or `cubic_identity.h5`). These names are
 explicitly configured in `output.file`; the engine does not choose a name from
 the coin or geometry. The HDF5 extension is `.h5`.
 
@@ -64,7 +63,7 @@ final_probability = result.read("observables/probability", -1)
 steps = result.steps
 ```
 
-The Python API resolves its output path relative to the current working directory. Reading `result.probability` loads the full sampled distribution history; use `result.read(dataset, selection)` for large results.
+The Python API resolves its output path relative to the current working directory. Reading `result.probability` loads the full sampled distribution history; use `result.read(dataset, selection)` for large results. After changing YAML parameters such as `simulation.steps`, rerun the simulation with a new output filename or `--overwrite` before plotting; the plotter rejects stale/inconsistent HDF5 data.
 
 ## Manuals and conventions
 

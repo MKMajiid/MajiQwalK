@@ -1,0 +1,15 @@
+schema_version: 1
+simulation:
+  steps: 50
+  save_every: 1
+geometry:
+  type: cubic
+  shape: [101, 101, 101]
+  boundary: open
+coin:
+  type: dft
+output:
+  file: cubic_dft.h5
+plot:
+  preset: aps_pr
+  formats: [pdf, png]

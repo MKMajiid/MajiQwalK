@@ -1,0 +1,15 @@
+schema_version: 1
+simulation:
+  steps: 100
+  save_every: 1
+geometry:
+  type: square
+  shape: [201, 201]
+  boundary: open
+coin:
+  type: identity
+output:
+  file: square_identity.h5
+plot:
+  preset: aps_pr
+  formats: [pdf, png]
