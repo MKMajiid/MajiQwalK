@@ -4,7 +4,7 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "majiqwalk"
-version = "0.1.0.dev3"
+version = "0.1.0.dev4"
 description = "Modular discrete-time quantum walks: C++ engine, Python interface"
 readme = "README.md"
 requires-python = ">=3.10"

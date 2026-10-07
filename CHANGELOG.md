@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.0.dev4 — classical baselines and multidimensional coins
+
+Added a separate classical nearest-neighbour random-walk engine with isotropic or user-defined directional probabilities, shared HDF5 observables and plotting, and line/square/cubic examples. Added square tensor-Hadamard and multidimensional axis-Hadamard coins. Plotting now rejects stale HDF5 results whose stored sample axis disagrees with the embedded configuration.
+
 ## 0.1.0.dev3 — publication preparation
 
 Use a signed OpenMP loop index for MSVC, with range validation. Add reusable

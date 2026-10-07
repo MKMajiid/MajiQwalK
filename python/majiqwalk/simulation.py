@@ -33,13 +33,16 @@ class Simulation:
 
     def run(self, output=None, *, overwrite=None):
         config = self.config
-        if config.simulation.representation != "state_vector":
-            raise NotImplementedError("Density matrices are reserved in schema v1; execution is planned for a later milestone")
         shape = config.geometry.shape
         sites, d = math.prod(shape), 2*len(shape)
-        # Conservative peak-working-memory estimate, including conversion copies,
-        # both shift maps, coordinate/moment buffers and single-sample HDF5 chunks.
-        estimate = 128*sites*d + 64*sites*len(shape) + 16*d*d
+        quantum = config.model.type == "coined"
+        if quantum and config.simulation.representation != "state_vector":
+            raise NotImplementedError("Density matrices are reserved in schema v1; execution is planned for a later milestone")
+        # Conservative peak-working-memory estimates. Quantum evolution stores
+        # complex coin amplitudes and workspaces; the classical baseline stores
+        # only position probabilities and a second propagation buffer.
+        estimate = (128*sites*d + 64*sites*len(shape) + 16*d*d
+                    if quantum else 48*sites + 64*sites*len(shape))
         if estimate > config.simulation.max_memory_mib * 2**20:
             raise MemoryError(f"Estimated working memory {estimate/2**20:.1f} MiB exceeds simulation.max_memory_mib")
         path = Path(output or config.output.file).resolve()
@@ -48,9 +51,15 @@ class Simulation:
             raise FileExistsError(f"Output already exists: {path}; set output.overwrite or use --overwrite")
         path.parent.mkdir(parents=True, exist_ok=True)
         requested_threads = config.backend.threads
-        threads = _core.max_threads() if requested_threads == "auto" else requested_threads
-        engine = _core.Engine(shape, config.geometry.boundary, config.coin.array(d),
-                              config.initial_state.array(shape, d), threads)
+        if quantum:
+            threads = _core.max_threads() if requested_threads == "auto" else requested_threads
+            engine = _core.Engine(shape, config.geometry.boundary, config.coin.array(d),
+                                  config.initial_state.array(shape, d), threads)
+        else:
+            threads = 1
+            engine = _core.ClassicalEngine(
+                shape, config.geometry.boundary, config.classical.array(d),
+                config.initial_state.classical_probability(shape))
         fd, name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
         os.close(fd)
         temporary = Path(name)
@@ -72,6 +81,7 @@ class Simulation:
         config = self.config
         shape = tuple(config.geometry.shape)
         d = 2*len(shape)
+        quantum = config.model.type == "coined"
         kinds = {o.type for o in config.observables}
         stride, final = config.simulation.save_every, config.simulation.steps
         sample_steps = list(range(0, final+1, stride))
@@ -83,7 +93,8 @@ class Simulation:
                               timestamp=datetime.now(timezone.utc).isoformat(), backend="cpu",
                               threads=threads, openmp_enabled=_core.openmp_enabled(),
                               python_version=platform.python_version(), numpy_version=np.__version__,
-                              h5py_version=h5py.__version__, representation="state_vector",
+                              h5py_version=h5py.__version__, representation=config.simulation.representation,
+                              model_type=config.model.type,
                               actual_output_path=str(output_path),
                               git_commit=os.environ.get("MAJIQWALK_GIT_COMMIT", "unknown"))
         file.create_dataset("config/yaml", data=config.to_yaml(), dtype=h5py.string_dtype())
@@ -97,6 +108,11 @@ class Simulation:
         coordinates = np.indices(shape, dtype=float).reshape(len(shape), -1).T
         coordinates -= np.asarray(config.geometry.origin)
         geometry.create_dataset("coordinates", data=coordinates)
+        model = file.create_group("model")
+        model.attrs["type"] = config.model.type
+        if not quantum:
+            model.create_dataset("step_probabilities", data=config.classical.array(d))
+            model["step_probabilities"].attrs["port_order"] = geometry.attrs["port_order"]
         datasets = {}
 
         def dataset(name, trailing, dtype="f8"):
@@ -115,13 +131,16 @@ class Simulation:
             ds = dataset("observables/moments", (len(shape), len(orders)))
             ds.attrs.update(orders=orders, definition="raw Cartesian moments about geometry.origin")
             dataset("observables/variance", (len(shape),))
-        if "coin_position_entanglement" in kinds:
+        if quantum and "coin_position_entanglement" in kinds:
             ds = dataset("observables/entanglement/coin_position_entropy", ())
             ds.attrs.update(units="bits", definition="von Neumann entropy of the coin reduction of the pure global state")
             dataset("observables/entanglement/linear_entropy", ())
             dataset("observables/entanglement/reduced_coin_density_matrix", (d,d), "c16")
         if config.output.save_state:
-            dataset("states/snapshots", (*shape, d), "c16")
+            if quantum:
+                dataset("states/snapshots", (*shape, d), "c16")
+            else:
+                dataset("states/snapshots", shape)
         average_sum = np.zeros(math.prod(shape)) if "time_average_probability" in kinds else None
         previous_step = -1
         for row, step in enumerate(sample_steps):
@@ -137,7 +156,7 @@ class Simulation:
             if not np.isfinite(norm) or abs(norm-1) > 1e-9:
                 raise RuntimeError(f"Normalization failed at step {step}: {norm}")
             datasets["observables/norm"][row] = norm
-            if "probability" in kinds or orders:
+            if "probability" in kinds or orders or (config.output.save_state and not quantum):
                 probability = engine.probability()
             if "probability" in kinds:
                 datasets["observables/probability"][row] = probability.reshape(shape)
@@ -149,10 +168,13 @@ class Simulation:
                 variance = probability @ (coordinates**2) - mean**2
                 datasets["observables/moments"][row] = moments
                 datasets["observables/variance"][row] = np.maximum(variance, 0)
-            if "coin_position_entanglement" in kinds:
+            if quantum and "coin_position_entanglement" in kinds:
                 rho = engine.reduced_coin()
                 datasets["observables/entanglement/coin_position_entropy"][row] = coin_entropy(rho)
                 datasets["observables/entanglement/linear_entropy"][row] = max(0.0, float(1-np.trace(rho@rho).real))
                 datasets["observables/entanglement/reduced_coin_density_matrix"][row] = rho
             if config.output.save_state:
-                datasets["states/snapshots"][row] = engine.state().reshape(*shape, d)
+                if quantum:
+                    datasets["states/snapshots"][row] = engine.state().reshape(*shape, d)
+                else:
+                    datasets["states/snapshots"][row] = probability.reshape(shape)

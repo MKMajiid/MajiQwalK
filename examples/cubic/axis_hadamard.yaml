@@ -1,0 +1,24 @@
+schema_version: 1
+simulation:
+  steps: 20
+  save_every: 1
+geometry:
+  type: cubic
+  shape: [41, 41, 41]
+  boundary: open
+coin:
+  type: axis_hadamard
+initial_state:
+  coin:
+    amplitudes:
+      - [0.4082482904638631, 0.0]
+      - [0.0, 0.4082482904638631]
+      - [0.4082482904638631, 0.0]
+      - [0.0, 0.4082482904638631]
+      - [0.4082482904638631, 0.0]
+      - [0.0, 0.4082482904638631]
+output:
+  file: cubic_axis_hadamard.h5
+plot:
+  preset: aps_pr
+  formats: [pdf, png]

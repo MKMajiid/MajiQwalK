@@ -48,14 +48,19 @@ if platform.system()=="Linux":
 executable=bundle/("majiqwalk.exe" if platform.system()=="Windows" else "majiqwalk")
 with tempfile.TemporaryDirectory() as folder:
     subprocess.run([str(executable),"--version"],cwd=folder,check=True)
-    for geometry, coin in [("line", "hadamard"), ("line", "custom"),
-                           ("square", "grover"), ("cubic", "grover")]:
-        output=Path(folder)/f"{geometry}_{coin}.h5"
-        subprocess.run([str(executable),"run",str(bundle/f"examples/{geometry}/{coin}.yaml"),
+    smoke_examples = [
+        ("line", "hadamard"), ("line", "custom"), ("line", "classical_symmetric"),
+        ("square", "grover"), ("square", "dft"), ("square", "tensor_hadamard"),
+        ("square", "classical_isotropic"),
+        ("cubic", "grover"), ("cubic", "axis_hadamard"), ("cubic", "classical_isotropic"),
+    ]
+    for geometry, example in smoke_examples:
+        output=Path(folder)/f"{geometry}_{example}.h5"
+        subprocess.run([str(executable),"run",str(bundle/f"examples/{geometry}/{example}.yaml"),
                         "--output",str(output)],cwd=folder,check=True)
         subprocess.run([str(executable),"inspect",str(output)],cwd=folder,check=True)
         subprocess.run([str(executable),"plot",str(output),
-                        "--directory",str(Path(folder)/f"figures_{geometry}_{coin}"),
+                        "--directory",str(Path(folder)/f"figures_{geometry}_{example}"),
                         "--formats","pdf","svg","png"],cwd=folder,check=True)
 name=f"majiqwalk-{platform.system().lower()}-{platform.machine().lower()}-portable"
 archive=write_archive(ROOT/"dist"/f"{name}.zip", ROOT/"dist",

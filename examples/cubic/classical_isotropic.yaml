@@ -1,0 +1,15 @@
+schema_version: 1
+simulation:
+  steps: 20
+  save_every: 1
+model:
+  type: classical_random_walk
+geometry:
+  type: cubic
+  shape: [41, 41, 41]
+  boundary: open
+output:
+  file: cubic_classical_isotropic.h5
+plot:
+  preset: aps_pr
+  formats: [pdf, png]

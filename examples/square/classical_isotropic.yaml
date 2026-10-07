@@ -1,0 +1,15 @@
+schema_version: 1
+simulation:
+  steps: 50
+  save_every: 1
+model:
+  type: classical_random_walk
+geometry:
+  type: square
+  shape: [101, 101]
+  boundary: open
+output:
+  file: square_classical_isotropic.h5
+plot:
+  preset: aps_pr
+  formats: [pdf, png]

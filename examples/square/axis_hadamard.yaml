@@ -1,0 +1,22 @@
+schema_version: 1
+simulation:
+  steps: 50
+  save_every: 1
+geometry:
+  type: square
+  shape: [101, 101]
+  boundary: open
+coin:
+  type: axis_hadamard
+initial_state:
+  coin:
+    amplitudes:
+      - [0.5, 0.0]
+      - [0.0, 0.5]
+      - [0.5, 0.0]
+      - [0.0, 0.5]
+output:
+  file: square_axis_hadamard.h5
+plot:
+  preset: aps_pr
+  formats: [pdf, png]

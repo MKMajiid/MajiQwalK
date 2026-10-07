@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: "Please cite the version of MajiQwalK used in your research."
 type: software
 title: "MajiQwalK: Modular Discrete-Time Quantum Walks"
-version: 0.1.0.dev3
+version: 0.1.0.dev4
 authors:
   - family-names: "Moradi Kelardeh"
     given-names: "Majid"

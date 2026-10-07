@@ -27,7 +27,7 @@ def complex_values(values, name):
 class SimulationSpec(Spec):
     steps: int = Field(default=100, ge=0)
     save_every: int = Field(default=1, ge=1)
-    representation: Literal["state_vector", "density_matrix"] = "state_vector"
+    representation: Literal["state_vector", "density_matrix", "probability"] = "state_vector"
     max_memory_mib: int = Field(default=512, ge=1)
 
 
@@ -56,11 +56,27 @@ class GeometrySpec(Spec):
 
 
 class ModelSpec(Spec):
-    type: Literal["coined"] = "coined"
+    type: Literal["coined", "classical_random_walk"] = "coined"
+
+
+class ClassicalWalkSpec(Spec):
+    step_probabilities: list[float] | None = None
+
+    def array(self, dimension):
+        if self.step_probabilities is None:
+            return np.full(dimension, 1.0 / dimension, dtype=float)
+        probabilities = np.asarray(self.step_probabilities, dtype=float)
+        if probabilities.shape != (dimension,) or not np.isfinite(probabilities).all():
+            raise ValueError(f"classical.step_probabilities must contain {dimension} finite values")
+        if np.any(probabilities < 0):
+            raise ValueError("classical.step_probabilities must be nonnegative")
+        if abs(float(probabilities.sum()) - 1.0) > TOL:
+            raise ValueError("classical.step_probabilities must sum to 1 (absolute tolerance 1e-12)")
+        return probabilities
 
 
 class CoinSpec(Spec):
-    type: Literal["hadamard", "custom", "u2", "grover", "dft", "identity"] = "hadamard"
+    type: Literal["hadamard", "tensor_hadamard", "axis_hadamard", "custom", "u2", "grover", "dft", "identity"] = "hadamard"
     dimension: int | None = Field(default=None, ge=1)
     matrix: list[list[Pair]] | None = None
     theta: float = 0.0
@@ -85,6 +101,18 @@ class CoinSpec(Spec):
             if dimension != 2:
                 raise ValueError("Hadamard coin has 2 ports; use grover, dft, identity, or custom in 2D/3D")
             c = np.array([[1, 1], [1, -1]], dtype=complex) / math.sqrt(2)
+        elif self.type == "tensor_hadamard":
+            if dimension != 4:
+                raise ValueError("tensor_hadamard is the 4-port H⊗H coin for square walks")
+            h = np.array([[1, 1], [1, -1]], dtype=complex) / math.sqrt(2)
+            c = np.kron(h, h)
+        elif self.type == "axis_hadamard":
+            if dimension % 2:
+                raise ValueError("axis_hadamard requires an even directional port count")
+            h = np.array([[1, 1], [1, -1]], dtype=complex) / math.sqrt(2)
+            c = np.zeros((dimension, dimension), dtype=complex)
+            for start in range(0, dimension, 2):
+                c[start:start+2, start:start+2] = h
         elif self.type == "u2":
             if dimension != 2:
                 raise ValueError("u2 coin requires a two-port geometry")
@@ -111,6 +139,7 @@ class CoinSpec(Spec):
 class PositionSpec(Spec):
     site: int | None = Field(default=None, ge=0)
     amplitudes: list[Pair] | None = None
+    probabilities: list[float] | None = None
 
 
 class InitialCoinSpec(Spec):
@@ -127,14 +156,19 @@ class InitialStateSpec(Spec):
     def exclusive(self):
         if self.amplitudes is not None and (self.position is not None or self.coin is not None):
             raise ValueError("Use either a full initial state or separate position and coin states")
-        if self.position and self.position.site is not None and self.position.amplitudes is not None:
-            raise ValueError("initial_state.position: use site or amplitudes")
+        if self.position:
+            choices = sum(value is not None for value in
+                          (self.position.site, self.position.amplitudes, self.position.probabilities))
+            if choices > 1:
+                raise ValueError("initial_state.position: use only one of site, amplitudes, or probabilities")
         if self.coin and self.coin.basis is not None and self.coin.amplitudes is not None:
             raise ValueError("initial_state.coin: use basis or amplitudes")
         return self
 
     def validate_dimensions(self, shape, dimension):
         sites = math.prod(shape)
+        if self.position and self.position.probabilities is not None:
+            raise ValueError("initial_state.position.probabilities is only valid for classical_random_walk")
         for values, n, name in [
             (self.amplitudes, sites*dimension, "initial_state.amplitudes"),
             (self.position.amplitudes if self.position else None, sites, "initial_state.position.amplitudes"),
@@ -148,6 +182,29 @@ class InitialStateSpec(Spec):
             raise ValueError("initial_state.position.site is outside the geometry")
         if self.coin and self.coin.basis is not None and self.coin.basis >= dimension:
             raise ValueError("initial_state.coin.basis is outside the coin space")
+
+    def classical_probability(self, shape):
+        if self.amplitudes is not None or self.coin is not None:
+            raise ValueError("classical_random_walk initial_state uses position only")
+        sites = math.prod(shape)
+        position = self.position or PositionSpec()
+        if position.amplitudes is not None:
+            raise ValueError("classical_random_walk uses position.probabilities, not amplitudes")
+        if position.probabilities is not None:
+            probability = np.asarray(position.probabilities, dtype=float)
+            if probability.shape != (sites,) or not np.isfinite(probability).all():
+                raise ValueError(f"initial_state.position.probabilities must contain {sites} finite values")
+            if np.any(probability < 0) or abs(float(probability.sum()) - 1.0) > TOL:
+                raise ValueError("initial_state.position.probabilities must be nonnegative and sum to 1")
+            return probability
+        site = position.site
+        if site is None:
+            site = np.ravel_multi_index(tuple(n//2 for n in shape), tuple(shape))
+        if site >= sites:
+            raise ValueError("initial_state.position.site is outside the geometry")
+        probability = np.zeros(sites, dtype=float)
+        probability[site] = 1.0
+        return probability
 
     def array(self, shape, dimension):
         if self.amplitudes is not None:
@@ -214,7 +271,8 @@ class Config(Spec):
     simulation: SimulationSpec = Field(default_factory=SimulationSpec)
     geometry: GeometrySpec
     model: ModelSpec = Field(default_factory=ModelSpec)
-    coin: CoinSpec = Field(default_factory=CoinSpec)
+    coin: CoinSpec | None = Field(default_factory=CoinSpec)
+    classical: ClassicalWalkSpec | None = None
     initial_state: InitialStateSpec = Field(default_factory=InitialStateSpec)
     backend: BackendSpec = Field(default_factory=BackendSpec)
     observables: list[ObservableSpec] = Field(default_factory=lambda: [
@@ -234,11 +292,39 @@ class Config(Spec):
     def validate_physics(self):
         shape = self.geometry.shape
         dimension = 2 * len(shape)
-        self.coin.array(dimension)
-        self.initial_state.validate_dimensions(shape, dimension)
+
+        if self.model.type == "coined":
+            if self.simulation.representation == "probability":
+                raise ValueError("coined quantum walks require state_vector or density_matrix representation")
+            if self.coin is None:
+                raise ValueError("coin is required for model.type: coined")
+            if self.classical is not None:
+                raise ValueError("classical settings are only valid for model.type: classical_random_walk")
+            self.coin.array(dimension)
+            self.initial_state.validate_dimensions(shape, dimension)
+        else:
+            if "representation" in self.simulation.model_fields_set:
+                if self.simulation.representation != "probability":
+                    raise ValueError("classical_random_walk requires simulation.representation: probability")
+            else:
+                self.simulation.representation = "probability"
+            if "coin" in self.model_fields_set and self.coin is not None:
+                raise ValueError("coin is not used by model.type: classical_random_walk")
+            self.coin = None
+            if self.classical is None:
+                self.classical = ClassicalWalkSpec()
+            self.classical.array(dimension)
+            self.initial_state.classical_probability(shape)
+            if isinstance(self.backend.threads, int) and self.backend.threads != 1:
+                raise ValueError("classical_random_walk is serial in this milestone; use backend.threads: 1 or auto")
+            if "observables" not in self.model_fields_set:
+                self.observables = [ObservableSpec(type="probability"), ObservableSpec(type="moments")]
+
         kinds = [o.type for o in self.observables]
         if not kinds or len(kinds) != len(set(kinds)):
             raise ValueError("observables must be a nonempty list of distinct types")
+        if self.model.type == "classical_random_walk" and "coin_position_entanglement" in kinds:
+            raise ValueError("coin_position_entanglement is a quantum observable and is unavailable for classical_random_walk")
         if not self.output.file.strip():
             raise ValueError("output.file cannot be empty")
         return self

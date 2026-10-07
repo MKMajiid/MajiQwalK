@@ -28,5 +28,19 @@ int main() {
     try { Engine invalid({9}, "open", {1,1,1,1}, state); }
     catch (const std::invalid_argument&) { rejected=true; }
     require(rejected, "Nonunitary coin must fail in C++ too");
+
+    std::vector<double> classical_state(9, 0.0);
+    classical_state[4] = 1.0;
+    ClassicalEngine classical({9}, "open", {0.5, 0.5}, classical_state);
+    classical.advance(2);
+    auto cp = classical.probability();
+    require(std::abs(cp[2]-.25)<1e-14 && std::abs(cp[4]-.5)<1e-14 &&
+            std::abs(cp[6]-.25)<1e-14, "Classical two-step binomial distribution");
+    require(std::abs(classical.norm()-1)<1e-14, "Classical probability norm");
+    bool bad_classical=false;
+    try { ClassicalEngine invalid_classical({9}, "periodic", {0.4,0.4}, classical_state); }
+    catch (const std::invalid_argument&) { bad_classical=true; }
+    require(bad_classical, "Classical step probabilities must be stochastic");
+
     std::cout << "C++ scientific smoke tests passed\n";
 }

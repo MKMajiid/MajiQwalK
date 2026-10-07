@@ -1,0 +1,18 @@
+schema_version: 1
+simulation:
+  steps: 100
+  save_every: 1
+model:
+  type: classical_random_walk
+geometry:
+  type: line
+  shape: [201]
+  boundary: open
+initial_state:
+  position:
+    site: 100
+output:
+  file: line_classical_symmetric.h5
+plot:
+  preset: aps_pr
+  formats: [pdf, png]

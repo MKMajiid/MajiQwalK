@@ -5,12 +5,13 @@
 Author: **Majid Moradi Kelardeh**, Pavol Jozef Šafárik University in Košice.
 [Academic page](https://mkmajiid.github.io) · [ORCID](https://orcid.org/0000-0001-9479-2042).
 
-Version **0.1.0.dev3** prepares the first executable milestone for publication, with Windows OpenMP compatibility and reproducible archive timestamps. It is not a stable production release or a package already published on PyPI. The development source archive requires Python and a C++20 compiler. The self-contained Windows/Linux release workflow is provided separately and needs target-platform release validation.
+Version **0.1.0.dev4** extends the executable milestone with classical random-walk baselines, broader multidimensional coin support, Windows OpenMP compatibility, and reproducible archive timestamps. It is not a stable production release or a package already published on PyPI. The development source archive requires Python and a C++20 compiler. The self-contained Windows/Linux release workflow is provided separately and needs target-platform release validation.
 
 ## Implemented
 
-- Ordinary coined evolution, **coin then shift**, on line, square and simple-cubic lattices.
-- General custom unitary coins; Hadamard and parameterized U(2) for two-port walks, plus Grover, DFT/Fourier and identity coins for arbitrary port dimension.
+- Ordinary coined quantum evolution, **coin then shift**, on line, square and simple-cubic lattices.
+- Classical nearest-neighbour random walks on the same Cartesian geometries, with isotropic or user-defined directional transition probabilities.
+- General custom unitary coins; Hadamard and parameterized U(2) for two-port walks; tensor Hadamard on square walks; axis-wise Hadamard, Grover, DFT/Fourier and identity coins for supported multidimensional port spaces.
 - Localized, distributed product and arbitrary full pure initial states.
 - Explicit open-window, periodic and reflecting boundaries.
 - Complex double precision; CPU propagation and optional OpenMP coin processing.
@@ -19,7 +20,7 @@ Version **0.1.0.dev3** prepares the first executable milestone for publication, 
 - Python API, `majiqwalk` CLI, CSV probability export and a Physical Review figure profile.
 - Independent small-system matrix references, exact short-time checks and a ballistic asymptotic benchmark.
 
-Density-matrix execution, channels, CUDA, split-step, accelerating, memory, Möbius walks, arbitrary graphs, sphere meshes, FI/QFIM and Uhlmann curvature are **planned extensions**. They are not advertised as executable features. See [roadmap](docs/developer/roadmap.md).
+Density-matrix execution, channels, CUDA, split-step, accelerating, memory, Möbius walks, arbitrary graphs, sphere meshes, persistent classical walks, FI/QFIM and Uhlmann curvature are **planned extensions**. They are not advertised as executable features. See [roadmap](docs/developer/roadmap.md).
 
 ## Install from this source
 
@@ -48,7 +49,7 @@ majiqwalk export examples/line/line_hadamard.h5 --output probability.csv
 
 `majiqwalk examples/line/hadamard.yaml` is also accepted. `python -m majiqwalk` provides the same commands. CLI output paths from YAML are relative to the configuration file; `--output` is relative to the current working directory. Existing HDF5 results are preserved unless `--overwrite` or `output.overwrite: true` is set.
 
-Shipped examples include line Hadamard/custom walks and Grover, DFT/Fourier and identity coins for both square and cubic walks. Output files use `<geometry>_<coin>.h5` (for example `square_dft.h5` or `cubic_identity.h5`). These names are
+Shipped examples include line Hadamard/custom quantum walks, Grover/DFT/identity/Hadamard-family multidimensional quantum walks, and symmetric, biased, square and cubic classical random walks. Output files use `<geometry>_<coin>.h5` (for example `square_dft.h5` or `cubic_identity.h5`). These names are
 explicitly configured in `output.file`; the engine does not choose a name from
 the coin or geometry. The HDF5 extension is `.h5`.
 
@@ -99,4 +100,21 @@ MajiQwalK is licensed under **Apache-2.0**; see [LICENSE](LICENSE) and [NOTICE](
 
 ## GitHub and academic page
 
-The public source repository is [MKMajiid/MajiQwalK](https://github.com/MKMajiid/MajiQwalK). Version `0.1.0.dev3` is a development milestone; create the first tagged pre-release only after the Linux/Windows CI matrix and portable-build validation pass for the exact release commit. See the [publication steps](docs/developer/publishing.md).
+The public source repository is [MKMajiid/MajiQwalK](https://github.com/MKMajiid/MajiQwalK). Version `0.1.0.dev4` is a development milestone; create the first tagged pre-release only after the Linux/Windows CI matrix and portable-build validation pass for the exact release commit. See the [publication steps](docs/developer/publishing.md).
+
+
+### Classical baseline example
+
+```yaml
+model:
+  type: classical_random_walk
+geometry:
+  type: line
+  shape: [201]
+classical:
+  step_probabilities: [0.5, 0.5]
+simulation:
+  steps: 100
+```
+
+For a classical random walk, `coin` is omitted and the state is a normalized position probability distribution. The same probability, moment, variance and plotting pipeline is used, which makes quantum/classical transport comparisons straightforward.

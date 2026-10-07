@@ -64,6 +64,22 @@ struct EvolutionModel {
     void apply(State&, std::vector<Complex>&, std::size_t) const;
 };
 
+class ClassicalEngine {
+public:
+    ClassicalEngine(std::vector<std::size_t> shape, const std::string& boundary,
+                    std::vector<double> step_probabilities,
+                    std::vector<double> initial_probability);
+    void advance(std::size_t steps = 1);
+    const std::vector<double>& probability() const { return probability_; }
+    double norm() const;
+    std::size_t step() const { return step_; }
+    std::size_t sites() const { return geometry_.layout().sites; }
+private:
+    CartesianGeometry geometry_;
+    std::vector<double> step_probabilities_, probability_, workspace_;
+    std::size_t step_ = 0;
+};
+
 class Engine {
 public:
     Engine(std::vector<std::size_t> shape, const std::string& boundary,

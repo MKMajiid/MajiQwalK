@@ -25,3 +25,12 @@ Examples are provided for Grover, DFT and identity coins in both `examples/squar
 ## Changing simulation parameters
 
 Plots are generated from the HDF5 result, not directly from the current YAML file. If you change `simulation.steps`, `save_every`, the coin, the initial state, or another simulation parameter, rerun the simulation and write a new HDF5 file or use `--overwrite`. The plotter validates that the stored time axis ends at the step count recorded in the HDF5 configuration and rejects inconsistent/stale results.
+
+
+## Classical random-walk counterparts
+
+Set `model.type: classical_random_walk`. Classical runs use a position probability distribution rather than amplitudes or a coin space. The default transition rule is isotropic over the directional ports; specify `classical.step_probabilities` in port order for a biased walk. For example, on a line `[0.3, 0.7]` means left/right probabilities of 0.3 and 0.7.
+
+Classical and quantum results share HDF5 probability, moment, variance, time-axis and plotting conventions. Quantum-only observables such as coin-position entanglement are rejected for classical models.
+
+The current classical model is memoryless (Markovian) nearest-neighbour transport. Persistent/coin-memory classical walks are a later extension.

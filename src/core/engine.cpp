@@ -166,6 +166,69 @@ std::vector<Complex> Engine::reduced_coin() const {
                     std::conj(amplitudes()[x*l.coin_dimension+b]);
     return rho;
 }
+
+ClassicalEngine::ClassicalEngine(std::vector<std::size_t> shape, const std::string& boundary,
+                                 std::vector<double> step_probabilities,
+                                 std::vector<double> initial_probability)
+    : geometry_(std::move(shape), parse_boundary(boundary)),
+      step_probabilities_(std::move(step_probabilities)),
+      probability_(std::move(initial_probability)),
+      workspace_(geometry_.layout().sites, 0.0) {
+    const auto layout = geometry_.layout();
+    if (step_probabilities_.size() != layout.coin_dimension)
+        throw std::invalid_argument("Classical step probabilities must match the directional port count");
+    if (probability_.size() != layout.sites)
+        throw std::invalid_argument("Classical initial probability dimension does not match geometry");
+    double step_sum = 0.0;
+    for (double value : step_probabilities_) {
+        if (!std::isfinite(value) || value < 0.0)
+            throw std::invalid_argument("Classical step probabilities must be finite and nonnegative");
+        step_sum += value;
+    }
+    if (std::abs(step_sum - 1.0) > 1e-12)
+        throw std::invalid_argument("Classical step probabilities must sum to 1 (tolerance 1e-12)");
+    double state_sum = 0.0;
+    for (double value : probability_) {
+        if (!std::isfinite(value) || value < 0.0)
+            throw std::invalid_argument("Classical initial probabilities must be finite and nonnegative");
+        state_sum += value;
+    }
+    if (std::abs(state_sum - 1.0) > 1e-12)
+        throw std::invalid_argument("Classical initial probabilities must sum to 1 (tolerance 1e-12)");
+}
+void ClassicalEngine::advance(std::size_t steps) {
+    const auto layout = geometry_.layout();
+    const auto& destinations = geometry_.destinations();
+    for (std::size_t iteration = 0; iteration < steps; ++iteration) {
+        for (std::size_t site = 0; site < layout.sites; ++site) {
+            if (probability_[site] == 0.0) continue;
+            for (std::size_t port = 0; port < layout.coin_dimension; ++port) {
+                const double contribution = probability_[site] * step_probabilities_[port];
+                if (contribution == 0.0) continue;
+                const auto destination = destinations[site*layout.coin_dimension + port];
+                if (destination == CartesianGeometry::outside)
+                    throw std::runtime_error("Classical walk reached the open window edge; enlarge geometry.shape or choose an explicit boundary");
+            }
+        }
+        std::fill(workspace_.begin(), workspace_.end(), 0.0);
+        for (std::size_t site = 0; site < layout.sites; ++site) {
+            for (std::size_t port = 0; port < layout.coin_dimension; ++port) {
+                const double contribution = probability_[site] * step_probabilities_[port];
+                if (contribution == 0.0) continue;
+                const auto destination = destinations[site*layout.coin_dimension + port];
+                workspace_[destination / layout.coin_dimension] += contribution;
+            }
+        }
+        probability_.swap(workspace_);
+        ++step_;
+    }
+}
+double ClassicalEngine::norm() const {
+    double total = 0.0;
+    for (double value : probability_) total += value;
+    return total;
+}
+
 bool openmp_enabled() {
 #ifdef _OPENMP
     return true;

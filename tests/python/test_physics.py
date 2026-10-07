@@ -86,3 +86,29 @@ def test_dft_coin_is_unitary_for_square_and_cubic_port_counts(dimension):
     from majiqwalk.config import CoinSpec
     coin = CoinSpec(type="dft").array(dimension)
     np.testing.assert_allclose(coin.conj().T @ coin, np.eye(dimension), atol=1e-12, rtol=0)
+
+
+def test_classical_simulation_hdf5_pipeline(tmp_path):
+    import h5py
+    from majiqwalk import Config, Simulation
+    config = Config.model_validate({
+        "simulation": {"steps": 20, "save_every": 2},
+        "model": {"type": "classical_random_walk"},
+        "geometry": {"type": "line", "shape": [41], "boundary": "open"},
+        "classical": {"step_probabilities": [0.5, 0.5]},
+        "initial_state": {"position": {"site": 20}},
+        "observables": [{"type": "probability"}, {"type": "moments"}],
+        "output": {"file": "ignored.h5"},
+    })
+    target = tmp_path / "classical.h5"
+    result = Simulation(config).run(target)
+    np.testing.assert_array_equal(result.steps, np.arange(0, 21, 2))
+    with h5py.File(target, "r") as file:
+        assert file["metadata"].attrs["model_type"] == "classical_random_walk"
+        assert file["metadata"].attrs["representation"] == "probability"
+        np.testing.assert_allclose(file["model/step_probabilities"][()], [0.5, 0.5])
+        final = file["observables/probability"][-1]
+        x = np.arange(41) - 20
+        assert abs(final.sum() - 1.0) < 2e-14
+        assert abs(final @ (x**2) - 20.0) < 2e-12
+        assert "observables/entanglement" not in file
