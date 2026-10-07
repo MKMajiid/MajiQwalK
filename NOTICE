@@ -1,0 +1,10 @@
+MajiQwalK
+Copyright 2026 Majid Moradi Kelardeh
+
+Author affiliation: Pavol Jozef Šafárik University in Košice, Slovakia.
+ORCID: https://orcid.org/0000-0001-9479-2042
+
+This software uses separately licensed third-party dependencies through its
+build and runtime interfaces. No DSQSS or TensorNetwork source was copied.
+Portable redistribution must retain third-party license notices for every
+bundled dependency; audit those before publishing a portable release.
