@@ -1,6 +1,6 @@
 # MajiQwalK
 
-<p align="center"><img src="docs/assets/majiqwalk-logo.png" alt="MajiQwalK logo" width="640"></p>
+<p align="center"><img src="docs/assets/majiqwalk-logo.png" alt="MajiQwalK logo" width="512"></p>
 
 **A modular discrete-time quantum-walk package with a C++20 numerical core and a Python API and command line.**
 
