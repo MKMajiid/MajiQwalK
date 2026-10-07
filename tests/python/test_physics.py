@@ -112,3 +112,40 @@ def test_classical_simulation_hdf5_pipeline(tmp_path):
         assert abs(final.sum() - 1.0) < 2e-14
         assert abs(final @ (x**2) - 20.0) < 2e-12
         assert "observables/entanglement" not in file
+
+
+def test_quantum_classical_compare_pipeline(tmp_path):
+    from majiqwalk import Config, Simulation
+    from majiqwalk.analysis import compare_transport
+    from majiqwalk.plot import plot_comparison
+
+    base = {
+        "simulation": {"steps": 20, "save_every": 1},
+        "geometry": {"type": "line", "shape": [41], "boundary": "open"},
+        "initial_state": {"position": {"site": 20}},
+        "observables": [{"type": "probability"}, {"type": "moments"}],
+    }
+    classical = Config.model_validate({
+        **base,
+        "model": {"type": "classical_random_walk"},
+        "output": {"file": "memoryless.h5"},
+    })
+    persistent = Config.model_validate({
+        **base,
+        "model": {"type": "classical_random_walk"},
+        "classical": {"type": "persistent", "persistence": 0.8},
+        "output": {"file": "persistent.h5"},
+    })
+    first = tmp_path / "memoryless.h5"
+    second = tmp_path / "persistent.h5"
+    Simulation(classical).run(first)
+    Simulation(persistent).run(second)
+    comparison = compare_transport(first, second)
+    np.testing.assert_array_equal(comparison["steps"], np.arange(21))
+    outputs = plot_comparison(first, second, tmp_path / "figures", ["png"])
+    assert {path.name for path in outputs} == {
+        "probability_comparison_t20.png",
+        "transport_variance_comparison.png",
+        "transport_rms_comparison.png",
+    }
+    assert all(path.stat().st_size > 0 for path in outputs)

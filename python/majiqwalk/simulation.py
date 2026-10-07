@@ -36,13 +36,16 @@ class Simulation:
         shape = config.geometry.shape
         sites, d = math.prod(shape), 2*len(shape)
         quantum = config.model.type == "coined"
+        persistent = (not quantum and config.classical.type == "persistent")
         if quantum and config.simulation.representation != "state_vector":
             raise NotImplementedError("Density matrices are reserved in schema v1; execution is planned for a later milestone")
         # Conservative peak-working-memory estimates. Quantum evolution stores
         # complex coin amplitudes and workspaces; the classical baseline stores
         # only position probabilities and a second propagation buffer.
         estimate = (128*sites*d + 64*sites*len(shape) + 16*d*d
-                    if quantum else 48*sites + 64*sites*len(shape))
+                    if quantum else
+                    (48*sites*d + 64*sites*len(shape) + 8*d*d
+                     if persistent else 48*sites + 64*sites*len(shape)))
         if estimate > config.simulation.max_memory_mib * 2**20:
             raise MemoryError(f"Estimated working memory {estimate/2**20:.1f} MiB exceeds simulation.max_memory_mib")
         path = Path(output or config.output.file).resolve()
@@ -55,10 +58,19 @@ class Simulation:
             threads = _core.max_threads() if requested_threads == "auto" else requested_threads
             engine = _core.Engine(shape, config.geometry.boundary, config.coin.array(d),
                                   config.initial_state.array(shape, d), threads)
+        elif persistent:
+            threads = 1
+            position_probability = config.initial_state.classical_probability(shape)
+            direction_probability = config.classical.initial_direction_array(d)
+            initial_direction_state = np.outer(
+                position_probability, direction_probability).reshape(-1)
+            engine = _core.PersistentClassicalEngine(
+                shape, config.geometry.boundary,
+                config.classical.transition_array(d), initial_direction_state)
         else:
             threads = 1
             engine = _core.ClassicalEngine(
-                shape, config.geometry.boundary, config.classical.array(d),
+                shape, config.geometry.boundary, config.classical.step_array(d),
                 config.initial_state.classical_probability(shape))
         fd, name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
         os.close(fd)
@@ -82,6 +94,7 @@ class Simulation:
         shape = tuple(config.geometry.shape)
         d = 2*len(shape)
         quantum = config.model.type == "coined"
+        persistent = (not quantum and config.classical.type == "persistent")
         kinds = {o.type for o in config.observables}
         stride, final = config.simulation.save_every, config.simulation.steps
         sample_steps = list(range(0, final+1, stride))
@@ -111,8 +124,23 @@ class Simulation:
         model = file.create_group("model")
         model.attrs["type"] = config.model.type
         if not quantum:
-            model.create_dataset("step_probabilities", data=config.classical.array(d))
-            model["step_probabilities"].attrs["port_order"] = geometry.attrs["port_order"]
+            model.attrs["classical_type"] = config.classical.type
+            if persistent:
+                transition = model.create_dataset(
+                    "transition_matrix", data=config.classical.transition_array(d))
+                transition.attrs.update(
+                    convention="rows=next direction; columns=previous direction",
+                    port_order=geometry.attrs["port_order"])
+                initial_direction = model.create_dataset(
+                    "initial_direction_probabilities",
+                    data=config.classical.initial_direction_array(d))
+                initial_direction.attrs["port_order"] = geometry.attrs["port_order"]
+                if config.classical.persistence is not None:
+                    model.attrs["persistence"] = config.classical.persistence
+            else:
+                model.create_dataset(
+                    "step_probabilities", data=config.classical.step_array(d))
+                model["step_probabilities"].attrs["port_order"] = geometry.attrs["port_order"]
         datasets = {}
 
         def dataset(name, trailing, dtype="f8"):

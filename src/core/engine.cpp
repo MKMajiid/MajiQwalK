@@ -229,6 +229,89 @@ double ClassicalEngine::norm() const {
     return total;
 }
 
+PersistentClassicalEngine::PersistentClassicalEngine(
+        std::vector<std::size_t> shape, const std::string& boundary,
+        std::vector<double> transition_matrix, std::vector<double> initial_direction_state)
+    : geometry_(std::move(shape), parse_boundary(boundary)),
+      transition_matrix_(std::move(transition_matrix)),
+      state_(std::move(initial_direction_state)),
+      workspace_(geometry_.layout().dimension(), 0.0) {
+    const auto layout = geometry_.layout();
+    const auto d = layout.coin_dimension;
+    if (transition_matrix_.size() != checked_product(d, d))
+        throw std::invalid_argument("Persistent classical transition matrix must be d x d");
+    if (state_.size() != layout.dimension())
+        throw std::invalid_argument("Persistent classical initial directional state dimension does not match geometry");
+    for (std::size_t previous = 0; previous < d; ++previous) {
+        double column_sum = 0.0;
+        for (std::size_t next = 0; next < d; ++next) {
+            const double value = transition_matrix_[next*d + previous];
+            if (!std::isfinite(value) || value < 0.0)
+                throw std::invalid_argument("Persistent classical transition probabilities must be finite and nonnegative");
+            column_sum += value;
+        }
+        if (std::abs(column_sum - 1.0) > 1e-12)
+            throw std::invalid_argument("Each persistent classical transition-matrix column must sum to 1");
+    }
+    double total = 0.0;
+    for (double value : state_) {
+        if (!std::isfinite(value) || value < 0.0)
+            throw std::invalid_argument("Persistent classical initial directional probabilities must be finite and nonnegative");
+        total += value;
+    }
+    if (std::abs(total - 1.0) > 1e-12)
+        throw std::invalid_argument("Persistent classical initial directional state must sum to 1");
+}
+void PersistentClassicalEngine::advance(std::size_t steps) {
+    const auto layout = geometry_.layout();
+    const auto d = layout.coin_dimension;
+    const auto& destinations = geometry_.destinations();
+    for (std::size_t iteration = 0; iteration < steps; ++iteration) {
+        for (std::size_t site = 0; site < layout.sites; ++site) {
+            for (std::size_t previous = 0; previous < d; ++previous) {
+                const double source = state_[site*d + previous];
+                if (source == 0.0) continue;
+                for (std::size_t next = 0; next < d; ++next) {
+                    const double transition = transition_matrix_[next*d + previous];
+                    if (transition == 0.0) continue;
+                    const auto destination = destinations[site*d + next];
+                    if (destination == CartesianGeometry::outside)
+                        throw std::runtime_error("Persistent classical walk reached the open window edge; enlarge geometry.shape or choose an explicit boundary");
+                }
+            }
+        }
+        std::fill(workspace_.begin(), workspace_.end(), 0.0);
+        for (std::size_t site = 0; site < layout.sites; ++site) {
+            for (std::size_t previous = 0; previous < d; ++previous) {
+                const double source = state_[site*d + previous];
+                if (source == 0.0) continue;
+                for (std::size_t next = 0; next < d; ++next) {
+                    const double transition = transition_matrix_[next*d + previous];
+                    if (transition == 0.0) continue;
+                    const auto destination = destinations[site*d + next];
+                    workspace_[destination] += source * transition;
+                }
+            }
+        }
+        state_.swap(workspace_);
+        ++step_;
+    }
+}
+std::vector<double> PersistentClassicalEngine::probability() const {
+    const auto layout = geometry_.layout();
+    const auto d = layout.coin_dimension;
+    std::vector<double> probability(layout.sites, 0.0);
+    for (std::size_t site = 0; site < layout.sites; ++site)
+        for (std::size_t direction = 0; direction < d; ++direction)
+            probability[site] += state_[site*d + direction];
+    return probability;
+}
+double PersistentClassicalEngine::norm() const {
+    double total = 0.0;
+    for (double value : state_) total += value;
+    return total;
+}
+
 bool openmp_enabled() {
 #ifdef _OPENMP
     return true;

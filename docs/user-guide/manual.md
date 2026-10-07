@@ -34,3 +34,12 @@ Set `model.type: classical_random_walk`. Classical runs use a position probabili
 Classical and quantum results share HDF5 probability, moment, variance, time-axis and plotting conventions. Quantum-only observables such as coin-position entanglement are rejected for classical models.
 
 The current classical model is memoryless (Markovian) nearest-neighbour transport. Persistent/coin-memory classical walks are a later extension.
+
+
+## Persistent classical walks
+
+Use `classical.type: persistent` to retain a directional memory state. With `persistence: r`, the probability of keeping the same direction is (r); the remaining probability is distributed uniformly among the other directional ports. For full control, supply `classical.transition_matrix`, using rows for the next direction and columns for the previous direction. Every column must sum to one.
+
+## Transport comparison
+
+`majiqwalk compare first.h5 second.h5` requires identical geometry, origin, and sampled steps. It produces final probability (or x-marginal), total variance, and RMS-displacement comparisons. `majiqwalk transport result.h5` performs a log-log fit of total variance over the later fraction of available positive-time samples. The resulting exponent is a finite-time diagnostic; it should not be interpreted automatically as an asymptotic transport exponent.

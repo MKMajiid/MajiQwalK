@@ -47,6 +47,32 @@ PYBIND11_MODULE(_core, m) {
             return copy_array(rho, {d,d});
         });
 
+    py::class_<PersistentClassicalEngine>(m, "PersistentClassicalEngine")
+        .def(py::init([](std::vector<std::size_t> shape, std::string boundary,
+                         DArray transition_matrix, DArray initial_direction_state) {
+            if (transition_matrix.ndim() != 2 || transition_matrix.shape(0) != transition_matrix.shape(1))
+                throw std::invalid_argument("Persistent classical transition matrix must be a square 2D array");
+            if (initial_direction_state.ndim() != 1)
+                throw std::invalid_argument("Persistent classical initial directional state must be a flattened 1D array");
+            std::vector<double> matrix(transition_matrix.data(),
+                                       transition_matrix.data()+transition_matrix.size());
+            std::vector<double> state(initial_direction_state.data(),
+                                      initial_direction_state.data()+initial_direction_state.size());
+            py::gil_scoped_release release;
+            return std::make_unique<PersistentClassicalEngine>(
+                std::move(shape), boundary, std::move(matrix), std::move(state));
+        }), py::arg("shape"), py::arg("boundary"), py::arg("transition_matrix"),
+            py::arg("initial_direction_state"))
+        .def("advance", &PersistentClassicalEngine::advance, py::arg("steps")=1,
+             py::call_guard<py::gil_scoped_release>())
+        .def_property_readonly("step", &PersistentClassicalEngine::step)
+        .def("norm", &PersistentClassicalEngine::norm, py::call_guard<py::gil_scoped_release>())
+        .def("probability", [](const PersistentClassicalEngine& e) {
+            std::vector<double> p;
+            { py::gil_scoped_release release; p = e.probability(); }
+            return copy_array(p, {static_cast<py::ssize_t>(p.size())});
+        });
+
     py::class_<ClassicalEngine>(m, "ClassicalEngine")
         .def(py::init([](std::vector<std::size_t> shape, std::string boundary,
                          DArray step_probabilities, DArray initial_probability) {

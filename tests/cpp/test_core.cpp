@@ -42,5 +42,16 @@ int main() {
     catch (const std::invalid_argument&) { bad_classical=true; }
     require(bad_classical, "Classical step probabilities must be stochastic");
 
+    std::vector<double> persistent_state(18, 0.0);
+    persistent_state[8] = 0.5;
+    persistent_state[9] = 0.5;
+    PersistentClassicalEngine persistent(
+        {9}, "open", {1.0,0.0,0.0,1.0}, persistent_state);
+    persistent.advance(2);
+    auto pp = persistent.probability();
+    require(std::abs(pp[2]-.5)<1e-14 && std::abs(pp[6]-.5)<1e-14,
+            "Fully persistent classical walk must remain ballistic");
+    require(std::abs(persistent.norm()-1)<1e-14, "Persistent classical probability norm");
+
     std::cout << "C++ scientific smoke tests passed\n";
 }

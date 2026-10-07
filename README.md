@@ -1,16 +1,18 @@
 # MajiQwalK
 
+<p align="center"><img src="docs/assets/majiqwalk-logo.png" alt="MajiQwalK logo" width="640"></p>
+
 **A modular discrete-time quantum-walk package with a C++20 numerical core and a Python API and command line.**
 
 Author: **Majid Moradi Kelardeh**, Pavol Jozef Šafárik University in Košice.
 [Academic page](https://mkmajiid.github.io) · [ORCID](https://orcid.org/0000-0001-9479-2042).
 
-Version **0.1.0.dev4** extends the executable milestone with classical random-walk baselines, broader multidimensional coin support, Windows OpenMP compatibility, and reproducible archive timestamps. It is not a stable production release or a package already published on PyPI. The development source archive requires Python and a C++20 compiler. The self-contained Windows/Linux release workflow is provided separately and needs target-platform release validation.
+Version **0.1.0.dev5** adds quantum/classical transport comparison, finite-time transport-scaling diagnostics, persistent classical random walks, and repository branding on top of the validated quantum/classical core. It is not a stable production release or a package already published on PyPI. The development source archive requires Python and a C++20 compiler. The self-contained Windows/Linux release workflow is provided separately and needs target-platform release validation.
 
 ## Implemented
 
 - Ordinary coined quantum evolution, **coin then shift**, on line, square and simple-cubic lattices.
-- Classical nearest-neighbour random walks on the same Cartesian geometries, with isotropic or user-defined directional transition probabilities.
+- Classical nearest-neighbour random walks on the same Cartesian geometries, including memoryless isotropic/biased walks and persistent directional-memory walks.
 - General custom unitary coins; Hadamard and parameterized U(2) for two-port walks; tensor Hadamard on square walks; axis-wise Hadamard, Grover, DFT/Fourier and identity coins for supported multidimensional port spaces.
 - Localized, distributed product and arbitrary full pure initial states.
 - Explicit open-window, periodic and reflecting boundaries.
@@ -20,7 +22,7 @@ Version **0.1.0.dev4** extends the executable milestone with classical random-wa
 - Python API, `majiqwalk` CLI, CSV probability export and a Physical Review figure profile.
 - Independent small-system matrix references, exact short-time checks and a ballistic asymptotic benchmark.
 
-Density-matrix execution, channels, CUDA, split-step, accelerating, memory, Möbius walks, arbitrary graphs, sphere meshes, persistent classical walks, FI/QFIM and Uhlmann curvature are **planned extensions**. They are not advertised as executable features. See [roadmap](docs/developer/roadmap.md).
+Density-matrix execution, channels, CUDA, split-step, accelerating, memory, Möbius walks, arbitrary graphs, sphere meshes, FI/QFIM and Uhlmann curvature are **planned extensions**. They are not advertised as executable features. See [roadmap](docs/developer/roadmap.md).
 
 ## Install from this source
 
@@ -100,7 +102,7 @@ MajiQwalK is licensed under **Apache-2.0**; see [LICENSE](LICENSE) and [NOTICE](
 
 ## GitHub and academic page
 
-The public source repository is [MKMajiid/MajiQwalK](https://github.com/MKMajiid/MajiQwalK). Version `0.1.0.dev4` is a development milestone; create the first tagged pre-release only after the Linux/Windows CI matrix and portable-build validation pass for the exact release commit. See the [publication steps](docs/developer/publishing.md).
+The public source repository is [MKMajiid/MajiQwalK](https://github.com/MKMajiid/MajiQwalK). Version `0.1.0.dev5` is a development milestone; create the first tagged pre-release only after the Linux/Windows CI matrix and portable-build validation pass for the exact release commit. See the [publication steps](docs/developer/publishing.md).
 
 
 ### Classical baseline example
@@ -118,3 +120,21 @@ simulation:
 ```
 
 For a classical random walk, `coin` is omitted and the state is a normalized position probability distribution. The same probability, moment, variance and plotting pipeline is used, which makes quantum/classical transport comparisons straightforward.
+
+
+## Quantum/classical transport comparison
+
+Run compatible simulations with the same geometry and sampled time grid, then compare them directly:
+
+```bash
+majiqwalk compare quantum.h5 classical.h5 --directory figures
+majiqwalk transport quantum.h5
+majiqwalk transport classical.h5
+```
+
+The comparison command writes final probability/marginal, total-variance and RMS-displacement figures. The transport command fits the late finite-time law `sigma^2(t) = A t^alpha` and reports `alpha`, the prefactor and fit quality. The reported exponent is explicitly a **finite-time diagnostic**, not an asymptotic proof.
+
+Persistent classical walks are configured with `classical.type: persistent`. A scalar `persistence` produces a directional Markov chain that continues in the same direction with that probability and redistributes the remaining probability uniformly among other directions. A full column-stochastic transition matrix can be supplied instead.
+
+
+A ready-made classical baseline matching the shipped 200-step Hadamard line example is `examples/line/classical_hadamard_baseline.yaml`; this pair can be used directly with `majiqwalk compare`.

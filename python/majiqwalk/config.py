@@ -60,9 +60,18 @@ class ModelSpec(Spec):
 
 
 class ClassicalWalkSpec(Spec):
+    type: Literal["memoryless", "persistent"] = "memoryless"
     step_probabilities: list[float] | None = None
+    persistence: float | None = Field(default=None, ge=0.0, le=1.0)
+    transition_matrix: list[list[float]] | None = None
+    initial_direction_probabilities: list[float] | None = None
 
-    def array(self, dimension):
+    def step_array(self, dimension):
+        if self.type != "memoryless":
+            raise ValueError("classical.step_probabilities is only valid for classical.type: memoryless")
+        if any(value is not None for value in
+               (self.persistence, self.transition_matrix, self.initial_direction_probabilities)):
+            raise ValueError("persistent classical parameters require classical.type: persistent")
         if self.step_probabilities is None:
             return np.full(dimension, 1.0 / dimension, dtype=float)
         probabilities = np.asarray(self.step_probabilities, dtype=float)
@@ -73,6 +82,52 @@ class ClassicalWalkSpec(Spec):
         if abs(float(probabilities.sum()) - 1.0) > TOL:
             raise ValueError("classical.step_probabilities must sum to 1 (absolute tolerance 1e-12)")
         return probabilities
+
+    def transition_array(self, dimension):
+        if self.type != "persistent":
+            raise ValueError("classical transition matrices are only valid for classical.type: persistent")
+        if self.step_probabilities is not None:
+            raise ValueError("classical.step_probabilities is only valid for classical.type: memoryless")
+        if self.persistence is not None and self.transition_matrix is not None:
+            raise ValueError("Use classical.persistence or classical.transition_matrix, not both")
+        if self.transition_matrix is not None:
+            matrix = np.asarray(self.transition_matrix, dtype=float)
+            if matrix.shape != (dimension, dimension) or not np.isfinite(matrix).all():
+                raise ValueError(
+                    f"classical.transition_matrix must be a finite {dimension} x {dimension} matrix")
+            if np.any(matrix < 0):
+                raise ValueError("classical.transition_matrix entries must be nonnegative")
+            if not np.allclose(matrix.sum(axis=0), np.ones(dimension), atol=TOL, rtol=0):
+                raise ValueError(
+                    "Each classical.transition_matrix column must sum to 1; "
+                    "columns label the previous direction and rows the next direction")
+            return matrix
+        persistence = 0.75 if self.persistence is None else float(self.persistence)
+        matrix = np.full((dimension, dimension),
+                         (1.0 - persistence) / (dimension - 1), dtype=float)
+        np.fill_diagonal(matrix, persistence)
+        return matrix
+
+    def initial_direction_array(self, dimension):
+        if self.type != "persistent":
+            raise ValueError("Directional memory is only valid for classical.type: persistent")
+        if self.initial_direction_probabilities is None:
+            return np.full(dimension, 1.0 / dimension, dtype=float)
+        probabilities = np.asarray(self.initial_direction_probabilities, dtype=float)
+        if probabilities.shape != (dimension,) or not np.isfinite(probabilities).all():
+            raise ValueError(
+                f"classical.initial_direction_probabilities must contain {dimension} finite values")
+        if np.any(probabilities < 0) or abs(float(probabilities.sum()) - 1.0) > TOL:
+            raise ValueError(
+                "classical.initial_direction_probabilities must be nonnegative and sum to 1")
+        return probabilities
+
+    def validate_dimension(self, dimension):
+        if self.type == "memoryless":
+            self.step_array(dimension)
+        else:
+            self.transition_array(dimension)
+            self.initial_direction_array(dimension)
 
 
 class CoinSpec(Spec):
@@ -313,7 +368,7 @@ class Config(Spec):
             self.coin = None
             if self.classical is None:
                 self.classical = ClassicalWalkSpec()
-            self.classical.array(dimension)
+            self.classical.validate_dimension(dimension)
             self.initial_state.classical_probability(shape)
             if isinstance(self.backend.threads, int) and self.backend.threads != 1:
                 raise ValueError("classical_random_walk is serial in this milestone; use backend.threads: 1 or auto")

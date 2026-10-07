@@ -50,6 +50,7 @@ with tempfile.TemporaryDirectory() as folder:
     subprocess.run([str(executable),"--version"],cwd=folder,check=True)
     smoke_examples = [
         ("line", "hadamard"), ("line", "custom"), ("line", "classical_symmetric"),
+        ("line", "classical_persistent"), ("line", "classical_hadamard_baseline"),
         ("square", "grover"), ("square", "dft"), ("square", "tensor_hadamard"),
         ("square", "classical_isotropic"),
         ("cubic", "grover"), ("cubic", "axis_hadamard"), ("cubic", "classical_isotropic"),
@@ -62,6 +63,15 @@ with tempfile.TemporaryDirectory() as folder:
         subprocess.run([str(executable),"plot",str(output),
                         "--directory",str(Path(folder)/f"figures_{geometry}_{example}"),
                         "--formats","pdf","svg","png"],cwd=folder,check=True)
+
+    quantum = Path(folder)/"line_hadamard.h5"
+    classical = Path(folder)/"line_classical_hadamard_baseline.h5"
+    subprocess.run([str(executable),"transport",str(quantum)],cwd=folder,check=True)
+    subprocess.run([str(executable),"transport",str(classical)],cwd=folder,check=True)
+    subprocess.run([str(executable),"compare",str(quantum),str(classical),
+                    "--directory",str(Path(folder)/"figures_comparison"),
+                    "--formats","pdf","svg","png"],cwd=folder,check=True)
+
 name=f"majiqwalk-{platform.system().lower()}-{platform.machine().lower()}-portable"
 archive=write_archive(ROOT/"dist"/f"{name}.zip", ROOT/"dist",
                       (path for path in bundle.rglob("*") if path.is_file()))

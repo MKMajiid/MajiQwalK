@@ -18,3 +18,10 @@ The first classical baseline is a nearest-neighbour Markov random walk on the sa
 This baseline is intentionally separate from the quantum coin space. It supports direct comparisons of spreading laws: a symmetric classical line walk has variance proportional to (t), while the standard coherent Hadamard walk is ballistic with variance proportional to (t^2).
 
 For reflecting classical boundaries, an attempted step through the boundary remains at the boundary site. Open boundaries are computational windows and raise an error before probability would leave the represented domain.
+
+
+## Persistent classical counterpart
+
+A persistent classical walk augments position with a classical directional memory variable. If (T_{ab}=P(a_{t+1}=a\mid a_t=b)), then (T) is column-stochastic. After updating the directional state, the walker shifts along the selected outgoing port. This supplies a closer classical analogue of a coined DTQW than a memoryless random walk while remaining a fully classical Markov process on the enlarged state space.
+
+For the scalar persistence model, (T_{aa}=r) and (T_{ab}=(1-r)/(q-1)) for (a\ne b), where (q=2d) is the directional-port count. At (r=1), a symmetric two-direction initial state is ballistic even though the process is classical; this is why transport scaling alone does not certify quantumness.

@@ -9,7 +9,7 @@ from . import Config, Results, Simulation, __version__
 
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
-    commands = {"run", "validate", "inspect", "plot", "export", "schema"}
+    commands = {"run", "validate", "inspect", "plot", "compare", "transport", "export", "schema"}
     if argv and not argv[0].startswith("-") and argv[0] not in commands:
         argv.insert(0, "run")
     parser = argparse.ArgumentParser(prog="majiqwalk", description="C++ discrete-time quantum walks with a Python interface")
@@ -27,6 +27,14 @@ def main(argv=None):
     plot.add_argument("file")
     plot.add_argument("--directory", default="figures")
     plot.add_argument("--formats", nargs="+", choices=["pdf", "svg", "png"], default=None)
+    compare = sub.add_parser("compare", help="compare transport from two HDF5 results")
+    compare.add_argument("first")
+    compare.add_argument("second")
+    compare.add_argument("--directory", default="figures")
+    compare.add_argument("--formats", nargs="+", choices=["pdf", "svg", "png"], default=None)
+    transport = sub.add_parser("transport", help="fit finite-time transport scaling from variance")
+    transport.add_argument("file")
+    transport.add_argument("--fit-start-fraction", type=float, default=0.5)
     export = sub.add_parser("export", help="export probability to long-format CSV")
     export.add_argument("file")
     export.add_argument("--output", required=True)
@@ -50,6 +58,16 @@ def main(argv=None):
             print(json.dumps(Results(args.file).summary(), indent=2))
         elif args.command == "export":
             print(Results(args.file).export_probability_csv(args.output, overwrite=args.overwrite))
+        elif args.command == "transport":
+            from .analysis import transport_diagnostics
+            print(json.dumps(
+                transport_diagnostics(args.file, fit_start_fraction=args.fit_start_fraction),
+                indent=2))
+        elif args.command == "compare":
+            from .plot import plot_comparison
+            for path in plot_comparison(
+                    args.first, args.second, args.directory, args.formats):
+                print(path)
         else:
             from .plot import plot_results
             for path in plot_results(args.file, args.directory, args.formats):

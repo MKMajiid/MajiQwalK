@@ -1,0 +1,21 @@
+schema_version: 1
+simulation:
+  steps: 200
+  save_every: 1
+model:
+  type: classical_random_walk
+geometry:
+  type: line
+  shape: [401]
+  boundary: open
+initial_state:
+  position:
+    site: 200
+observables:
+  - type: probability
+  - type: moments
+output:
+  file: line_classical_hadamard_baseline.h5
+plot:
+  preset: aps_pr
+  formats: [pdf, png]

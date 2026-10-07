@@ -80,6 +80,22 @@ private:
     std::size_t step_ = 0;
 };
 
+class PersistentClassicalEngine {
+public:
+    PersistentClassicalEngine(std::vector<std::size_t> shape, const std::string& boundary,
+                              std::vector<double> transition_matrix,
+                              std::vector<double> initial_direction_state);
+    void advance(std::size_t steps = 1);
+    std::vector<double> probability() const;
+    double norm() const;
+    std::size_t step() const { return step_; }
+    HilbertLayout layout() const { return geometry_.layout(); }
+private:
+    CartesianGeometry geometry_;
+    std::vector<double> transition_matrix_, state_, workspace_;
+    std::size_t step_ = 0;
+};
+
 class Engine {
 public:
     Engine(std::vector<std::size_t> shape, const std::string& boundary,
